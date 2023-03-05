@@ -25,18 +25,21 @@ def print_error(text):
 
 
 def __pad(text):
-    if isinstance(text, bytes):
-        return text + b"!" * (16 - len(text) % 16)
-    return text + "!" * (16 - len(text) % 16)
+    if isinstance(text, str):
+        text = text.encode()
+    pad_len = 16 - len(text) % 16
+    pad_char = chr((16 - len(text) % 16) % 16).encode()
+    return text + pad_char * pad_len
 
 
 def __unpad(text):
-    counter = 1
-    while text[-counter] == 33:
-        counter += 1
-    if counter == 1:
-        return text
-    return text[: -counter + 1]
+    print(text)
+    pad_char = text[-1]
+    if pad_char == 0x0:
+        pad_len = 16
+    else:
+        pad_len = pad_char
+    return text[:-pad_len]
 
 
 def __rename_to_crypt(file):
@@ -57,11 +60,14 @@ def __add_starting_bytes(text):
 
 def __remove_starting_bytes(text):
     counter = 0
-    for byte in config.encrypted_file_starting_bytes:
-        if text[counter] != byte:
-            return b""
-        counter += 1
-    return text[len(config.encrypted_file_starting_bytes) :]
+    try:
+        for byte in config.encrypted_file_starting_bytes:
+            if text[counter] != byte:
+                return b""
+            counter += 1
+        return text[len(config.encrypted_file_starting_bytes) :]
+    except IndexError:
+        return b""
 
 
 def input_password(prompt):
