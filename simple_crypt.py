@@ -11,7 +11,14 @@ from getpass import getpass
 
 
 def help():
-    print("YELP")  # TODO HELP
+    print(f"Usage: {config.prog_name} encrypt|decrypt [FILE]... [OPTION]")
+    print(f"Encrypt/decrpt files and folders")
+    print(
+        f"\t-y, --delete\t\tdelete encrypted/decrypted file after saving decrypted/encrypted file"
+    )
+    print(
+        f"\t-p, --password\t\tuse following string as a password instead of prompting for one"
+    )
 
 
 def print_error(text):
@@ -64,7 +71,8 @@ def input_password(prompt):
 
 def read_file(file):
     with open(file, "br") as f:
-        return f.read()
+        ret = f.read()
+    return ret
 
 
 def write_file(file, text):
@@ -80,7 +88,7 @@ def decrypt(ciphertext, key):
     return __unpad(AES.new(__pad(key), AES.MODE_ECB).decrypt(ciphertext))
 
 
-def encrypt_file(file, key, verbose_errors=True):
+def encrypt_file(file, key, delete_old, verbose_errors=True):
     try:
         plain_bytes = read_file(file)
     except PermissionError:
@@ -90,11 +98,16 @@ def encrypt_file(file, key, verbose_errors=True):
         b64enc_string = b64encode(cipher_bytes).decode()
         try:
             write_file(__rename_to_crypt(file), b64enc_string)
+            # No failure in this function
+            if delete_old:
+                os.remove(file)
+            return True
         except PermissionError:
             print_error(f"Couldn't write to file {__rename_to_crypt(file)}")
+    return False  # Failure somwhere in this function
 
 
-def decrypt_file(file, key, verbose_errors=True):
+def decrypt_file(file, key, delete_old, verbose_errors=True):
     try:
         b64enc_bytes = read_file(file)
     except PermissionError:
@@ -107,7 +120,7 @@ def decrypt_file(file, key, verbose_errors=True):
         if not cipher_bytes:
             if verbose_errors:
                 print_error(
-                    f"{file} doesn't seem to be encrypted by {config.proj_name}"
+                    f"{file} doesn't seem to be encrypted by {config.prog_name}"
                 )
         else:
             try:
@@ -117,59 +130,78 @@ def decrypt_file(file, key, verbose_errors=True):
             else:
                 try:
                     write_file(__rename_from_crypt(file), plain_bytes)
+                    # No failure in this function
+                    if delete_old:
+                        os.remove(file)
+                    return True
                 except PermissionError:
                     print_error(f"Couldn't write to file {__rename_from_crypt(file)}")
+    return False  # Failure somwhere in this function
 
 
-def encrypt_dir(dir, key):
+def encrypt_dir(dir, key, delete_old):
     dir_contents = os.listdir(dir)
     for c in dir_contents:
         c_path = f"{dir}/{c}"
         if os.path.isfile(c_path):
-            encrypt_file(c_path, key, False)
+            encrypt_file(c_path, key, delete_old, False)
         elif os.path.isdir(c_path):
-            encrypt_dir(c_path, key)
+            encrypt_dir(c_path, key, delete_old)
 
 
-def decrypt_dir(dir, key):
+def decrypt_dir(dir, key, delete_old):
     dir_contents = os.listdir(dir)
     for c in dir_contents:
         c_path = f"{dir}/{c}"
         if os.path.isfile(c_path):
-            decrypt_file(c_path, key, False)
+            decrypt_file(c_path, key, delete_old, False)
         elif os.path.isdir(c_path):
-            decrypt_dir(c_path, key)
+            decrypt_dir(c_path, key, delete_old)
 
 
-# TODO option to auto delete on encryption, specify output file/dir
-# add byte signature to encrypted files?
 if __name__ == "__main__":
-    if len(sys.argv) <= 2:
+    delete_old = False
+    password = ""
+    args = sys.argv[1:]
+    if len(args) <= 1:
         help()
-    elif sys.argv[1] in ["-e", "--encrypt", "e", "encrypt"]:
-        path = sys.argv[2]
-        if not os.path.exists(path):
-            print_error("Path doesn't exist!")
-        else:
-            password = input_password("Input your password: ")
-            password_check = input_password("Input your password again: ")
+    else:
+        i = 1
+        while i < len(args):
+            path = args[i]
+            if path in ["-y", "--delete"]:
+                delete_old = True
+                args.pop(i)
+                i -= 1
+            elif path in ["-p", "--password"]:
+                args.pop(i)
+                if i < len(args):
+                    password = args.pop(i)
+            elif not os.path.exists(path):
+                print_error(f"{path} doesn't exist!")
+                break
+            i += 1
+
+        if args[0] in ["-e", "--encrypt", "e", "encrypt"]:
+            if not password:
+                password = input_password("Input your password: ")
+                password_check = input_password("Input your password again: ")
+            else:
+                password_check = password
             if password != password_check:
                 print_error("Passwords don't match!")
             else:
-                if os.path.isfile(path):
-                    encrypt_file(path, password)
-                elif os.path.isdir(path):
-                    encrypt_dir(path, password)
+                for path in args:
+                    if os.path.isfile(path):
+                        encrypt_file(path, password, delete_old)
+                    elif os.path.isdir(path):
+                        encrypt_dir(path, password, delete_old)
 
-    elif sys.argv[1] in ["-d", "--decrypt", "d", "decrypt"]:
-        path = sys.argv[2]
-        if not os.path.exists(path):
-            print_error("Path doesn't exist!")
-        else:
-            password = input_password("Input your password: ")
-            if os.path.isfile(path):
-                decrypt_file(path, password)
-            elif os.path.isdir(path):
-                decrypt_dir(path, password)
-    else:
-        help()
+        elif args[0] in ["-d", "--decrypt", "d", "decrypt"]:
+            if not password:
+                password = input_password("Input your password: ")
+            for path in args:
+                if os.path.isfile(path):
+                    decrypt_file(path, password, delete_old)
+                elif os.path.isdir(path):
+                    decrypt_dir(path, password, delete_old)
