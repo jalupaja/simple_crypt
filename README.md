@@ -2,7 +2,7 @@
 
 A simple python script to encrypt/decrypt files and folder using AES 
 
-# Arguments
+## Arguments
 
 | Argument | Explanation |
 | -- | -- |
@@ -11,7 +11,7 @@ A simple python script to encrypt/decrypt files and folder using AES
 | -d, --delete | delete encrypted/decrypted file after saving decrypted/encrypted file |
 |-p, --password | use following string as a password instead of prompting for one |
 
-# Examples 
+## Examples 
 
 | Example | howto |
 | -- | -- |
@@ -19,7 +19,10 @@ A simple python script to encrypt/decrypt files and folder using AES
 | Decrypt "file.crypt" and delete it after | `./simple_crypt.py -d -y file.crypt` |
 | Encrypt file with password "n0tSeqPas" | `./simple_crypt.py -e -p n0tSeqPas file`
 
-# ToDo
+## Installation
+`pip install -r requirements.txt`
+
+## ToDo
 These todos are totally optional and just here so I remember what I could do when opening this project sometime in the future:
 
 | ToDo |
