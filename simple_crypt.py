@@ -26,16 +26,17 @@ def print_error(text):
 
 def __pad(text):
     if isinstance(text, bytes):
-        return text + b"\0" * (16 - len(text) % 16)
-    return text + "\0" * (16 - len(text) % 16)
+        return text + b"!" * (16 - len(text) % 16)
+    return text + "!" * (16 - len(text) % 16)
 
 
 def __unpad(text):
-    text = text.decode()
-    counter = 0
-    while text[-(counter + 1)] == "\0":
+    counter = 1
+    while text[-counter] == 33:
         counter += 1
-    return text[:-counter]
+    if counter == 1:
+        return text
+    return text[: -counter + 1]
 
 
 def __rename_to_crypt(file):
@@ -73,8 +74,12 @@ def read_file(file):
 
 
 def write_file(file, text):
-    with open(file, "w", encoding="utf-8") as f:
-        f.write(text)
+    if isinstance(text, bytes):
+        with open(file, "bw") as f:
+            f.write(text)
+    else:
+        with open(file, "w") as f:
+            f.write(text)
 
 
 def encrypt(plaintext, key):
@@ -137,7 +142,7 @@ def decrypt_file(file, key, delete_old, verbose_errors=True):
 
 
 def encrypt_dir(input_dir, key, delete_old):
-    dir_contents = os.listdir(input_dir)
+    dir_contents = os.listdir(input_dir).copy()
     for c in dir_contents:
         c_path = f"{input_dir}/{c}"
         if os.path.isfile(c_path):
@@ -147,7 +152,7 @@ def encrypt_dir(input_dir, key, delete_old):
 
 
 def decrypt_dir(input_dir, key, delete_old):
-    dir_contents = os.listdir(input_dir)
+    dir_contents = os.listdir(input_dir).copy()
     for c in dir_contents:
         c_path = f"{input_dir}/{c}"
         if os.path.isfile(c_path):
@@ -179,26 +184,29 @@ if __name__ == "__main__":
                 break
             i += 1
 
-        if args[0] in ["-e", "--encrypt", "e", "encrypt"]:
-            if not password:
-                password = input_password("Input your password: ")
-                password_check = input_password("Input your password again: ")
-            else:
-                password_check = password
-            if password != password_check:
-                print_error("Passwords don't match!")
-            else:
+        else:
+            if args[0] in ["-e", "--encrypt", "e", "encrypt"]:
+                if not password:
+                    password = input_password("Input your password: ")
+                    password_check = input_password("Input your password again: ")
+                else:
+                    password_check = password
+                if password != password_check:
+                    print_error("Passwords don't match!")
+                else:
+                    for path in args:
+                        if os.path.isfile(path):
+                            encrypt_file(path, password, OPTION_DELETE_OLD)
+                        elif os.path.isdir(path):
+                            encrypt_dir(path, password, OPTION_DELETE_OLD)
+
+            elif args[0] in ["-d", "--decrypt", "d", "decrypt"]:
+                if not password:
+                    password = input_password("Input your password: ")
                 for path in args:
                     if os.path.isfile(path):
-                        encrypt_file(path, password, OPTION_DELETE_OLD)
+                        decrypt_file(path, password, OPTION_DELETE_OLD)
                     elif os.path.isdir(path):
-                        encrypt_dir(path, password, OPTION_DELETE_OLD)
-
-        elif args[0] in ["-d", "--decrypt", "d", "decrypt"]:
-            if not password:
-                password = input_password("Input your password: ")
-            for path in args:
-                if os.path.isfile(path):
-                    decrypt_file(path, password, OPTION_DELETE_OLD)
-                elif os.path.isdir(path):
-                    decrypt_dir(path, password, OPTION_DELETE_OLD)
+                        decrypt_dir(path, password, OPTION_DELETE_OLD)
+            else:
+                print_help()
