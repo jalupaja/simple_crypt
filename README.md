@@ -18,3 +18,10 @@ A simple python script to encrypt/decrypt files and folder using AES
 | Encrypt "dir/file" and "./file" | `./simple_crypt.py -e dir/file file` |
 | Decrypt "file.crypt" and delete it after | `./simple_crypt.py -d -y file.crypt` |
 | Encrypt file with password "n0tSeqPas" | `./simple_crypt.py -e -p n0tSeqPas file`
+
+# ToDo
+These todos are totally optional and just here so I remember what I could do when opening this project sometime in the future:
+
+| ToDo |
+| -- |
+| allow redirection into an output file |
