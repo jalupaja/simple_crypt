@@ -2,22 +2,21 @@
 
 import sys
 import os
-import config
-from Crypto.Cipher import AES
-from base64 import b64encode, b64decode, binascii
 from getpass import getpass
+from base64 import b64encode, b64decode, binascii
+from Crypto.Cipher import AES
 
-# from Crypto.Util.Padding import pad
+import config
 
 
-def help():
+def print_help():
     print(f"Usage: {config.prog_name} encrypt|decrypt [FILE]... [OPTION]")
-    print(f"Encrypt/decrpt files and folders")
+    print("Encrypt/decrpt files and folders")
     print(
-        f"\t-y, --delete\t\tdelete encrypted/decrypted file after saving decrypted/encrypted file"
+        "\t-y, --delete\t\tdelete encrypted/decrypted file after saving decrypted/encrypted file"
     )
     print(
-        f"\t-p, --password\t\tuse following string as a password instead of prompting for one"
+        "\t-p, --password\t\tuse following string as a password instead of prompting for one"
     )
 
 
@@ -26,10 +25,9 @@ def print_error(text):
 
 
 def __pad(text):
-    if type(text) == str:
-        return text + "\0" * (16 - len(text) % 16)
-    elif type(text) == bytes:
+    if isinstance(text, bytes):
         return text + b"\0" * (16 - len(text) % 16)
+    return text + "\0" * (16 - len(text) % 16)
 
 
 def __unpad(text):
@@ -52,17 +50,17 @@ def __rename_from_crypt(file):
     )
 
 
-def __add_starting_bytes(bytes):
-    return config.encrypted_file_starting_bytes + bytes
+def __add_starting_bytes(text):
+    return config.encrypted_file_starting_bytes + text
 
 
-def __remove_starting_bytes(bytes):
+def __remove_starting_bytes(text):
     counter = 0
     for byte in config.encrypted_file_starting_bytes:
-        if bytes[counter] != byte:
+        if text[counter] != byte:
             return b""
         counter += 1
-    return bytes[len(config.encrypted_file_starting_bytes) :]
+    return text[len(config.encrypted_file_starting_bytes) :]
 
 
 def input_password(prompt):
@@ -71,12 +69,11 @@ def input_password(prompt):
 
 def read_file(file):
     with open(file, "br") as f:
-        ret = f.read()
-    return ret
+        return f.read()
 
 
 def write_file(file, text):
-    with open(file, "w") as f:
+    with open(file, "w", encoding="utf-8") as f:
         f.write(text)
 
 
@@ -139,20 +136,20 @@ def decrypt_file(file, key, delete_old, verbose_errors=True):
     return False  # Failure somwhere in this function
 
 
-def encrypt_dir(dir, key, delete_old):
-    dir_contents = os.listdir(dir)
+def encrypt_dir(input_dir, key, delete_old):
+    dir_contents = os.listdir(input_dir)
     for c in dir_contents:
-        c_path = f"{dir}/{c}"
+        c_path = f"{input_dir}/{c}"
         if os.path.isfile(c_path):
             encrypt_file(c_path, key, delete_old, False)
         elif os.path.isdir(c_path):
             encrypt_dir(c_path, key, delete_old)
 
 
-def decrypt_dir(dir, key, delete_old):
-    dir_contents = os.listdir(dir)
+def decrypt_dir(input_dir, key, delete_old):
+    dir_contents = os.listdir(input_dir)
     for c in dir_contents:
-        c_path = f"{dir}/{c}"
+        c_path = f"{input_dir}/{c}"
         if os.path.isfile(c_path):
             decrypt_file(c_path, key, delete_old, False)
         elif os.path.isdir(c_path):
@@ -160,17 +157,17 @@ def decrypt_dir(dir, key, delete_old):
 
 
 if __name__ == "__main__":
-    delete_old = False
+    OPTION_DELETE_OLD = False
     password = ""
     args = sys.argv[1:]
     if len(args) <= 1:
-        help()
+        print_help()
     else:
         i = 1
         while i < len(args):
             path = args[i]
             if path in ["-y", "--delete"]:
-                delete_old = True
+                OPTION_DELETE_OLD = True
                 args.pop(i)
                 i -= 1
             elif path in ["-p", "--password"]:
@@ -193,15 +190,15 @@ if __name__ == "__main__":
             else:
                 for path in args:
                     if os.path.isfile(path):
-                        encrypt_file(path, password, delete_old)
+                        encrypt_file(path, password, OPTION_DELETE_OLD)
                     elif os.path.isdir(path):
-                        encrypt_dir(path, password, delete_old)
+                        encrypt_dir(path, password, OPTION_DELETE_OLD)
 
         elif args[0] in ["-d", "--decrypt", "d", "decrypt"]:
             if not password:
                 password = input_password("Input your password: ")
             for path in args:
                 if os.path.isfile(path):
-                    decrypt_file(path, password, delete_old)
+                    decrypt_file(path, password, OPTION_DELETE_OLD)
                 elif os.path.isdir(path):
-                    decrypt_dir(path, password, delete_old)
+                    decrypt_dir(path, password, OPTION_DELETE_OLD)
