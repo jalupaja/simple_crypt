@@ -7,9 +7,9 @@ A simple python script to encrypt/decrypt files and folder using AES
 | Argument | Explanation |
 | -- | -- |
 | -e, --encrypt | encrypt following files |
-| -y, --decrypt | decrypt following files |
-| -d, --delete | delete encrypted/decrypted file after saving decrypted/encrypted file |
-|-p, --password | use following string as a password instead of prompting for one |
+| -d, --decrypt | decrypt following files |
+| -y, --delete | delete encrypted/decrypted file after saving decrypted/encrypted file |
+| -p, --password | use following string as a password instead of prompting for one |
 
 ## Examples 
 
