@@ -33,7 +33,6 @@ def __pad(text):
 
 
 def __unpad(text):
-    print(text)
     pad_char = text[-1]
     if pad_char == 0x0:
         pad_len = 16
