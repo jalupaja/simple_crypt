@@ -18,6 +18,9 @@ def print_help():
     print(
         "\t-p, --password\t\tuse following string as a password instead of prompting for one"
     )
+    print(
+        "\t--print\t\tprint the output instead of writing it to a file"
+    )
 
 
 def print_error(text):
@@ -95,7 +98,7 @@ def decrypt(ciphertext, key):
     return __unpad(AES.new(__pad(key), AES.MODE_ECB).decrypt(ciphertext))
 
 
-def encrypt_file(file, key, delete_old, verbose_errors=True):
+def encrypt_file(file, key, OPTION_DELETE_OLD, OPTION_PRINT, verbose_errors=True):
     try:
         plain_bytes = read_file(file)
     except PermissionError:
@@ -103,18 +106,21 @@ def encrypt_file(file, key, delete_old, verbose_errors=True):
     else:
         cipher_bytes = __add_starting_bytes(encrypt(plain_bytes, key))
         b64enc_string = b64encode(cipher_bytes).decode()
-        try:
-            write_file(__rename_to_crypt(file), b64enc_string)
-            # No failure in this function
-            if delete_old:
-                os.remove(file)
-            return True
-        except PermissionError:
-            print_error(f"Couldn't write to file {__rename_to_crypt(file)}")
+        if OPTION_PRINT:
+            print(b64enc_string)
+        else:
+            try:
+                write_file(__rename_to_crypt(file), b64enc_string)
+                # No failure in this function
+                if OPTION_DELETE_OLD:
+                    os.remove(file)
+                return True
+            except PermissionError:
+                print_error(f"Couldn't write to file {__rename_to_crypt(file)}")
     return False  # Failure somwhere in this function
 
 
-def decrypt_file(file, key, delete_old, verbose_errors=True):
+def decrypt_file(file, key, OPTION_DELETE_OLD, OPTION_PRINT, verbose_errors=True):
     try:
         b64enc_bytes = read_file(file)
     except PermissionError:
@@ -135,39 +141,43 @@ def decrypt_file(file, key, delete_old, verbose_errors=True):
             except UnicodeDecodeError:
                 print_error(f"Wrong password for {file}")
             else:
-                try:
-                    write_file(__rename_from_crypt(file), plain_bytes)
-                    # No failure in this function
-                    if delete_old:
-                        os.remove(file)
-                    return True
-                except PermissionError:
-                    print_error(f"Couldn't write to file {__rename_from_crypt(file)}")
+                if OPTION_PRINT:
+                    print(plain_bytes.decode())
+                else:
+                    try:
+                        write_file(__rename_from_crypt(file), plain_bytes)
+                        # No failure in this function
+                        if OPTION_DELETE_OLD:
+                            os.remove(file)
+                        return True
+                    except PermissionError:
+                        print_error(f"Couldn't write to file {__rename_from_crypt(file)}")
     return False  # Failure somwhere in this function
 
 
-def encrypt_dir(input_dir, key, delete_old):
+def encrypt_dir(input_dir, key, OPTION_DELETE_OLD, OPTION_PRINT):
     dir_contents = os.listdir(input_dir).copy()
     for c in dir_contents:
         c_path = f"{input_dir}/{c}"
         if os.path.isfile(c_path):
-            encrypt_file(c_path, key, delete_old, False)
+            encrypt_file(c_path, key, OPTION_DELETE_OLD, OPTION_PRINT, False)
         elif os.path.isdir(c_path):
-            encrypt_dir(c_path, key, delete_old)
+            encrypt_dir(c_path, key, OPTION_DELETE_OLD, OPTION_PRINT)
 
 
-def decrypt_dir(input_dir, key, delete_old):
+def decrypt_dir(input_dir, key, OPTION_OPTION_DELETE_OLD, OPTION_PRINT):
     dir_contents = os.listdir(input_dir).copy()
     for c in dir_contents:
         c_path = f"{input_dir}/{c}"
         if os.path.isfile(c_path):
-            decrypt_file(c_path, key, delete_old, False)
+            decrypt_file(c_path, key, OPTION_DELETE_OLD, OPTION_PRINT, False)
         elif os.path.isdir(c_path):
-            decrypt_dir(c_path, key, delete_old)
+            decrypt_dir(c_path, key, OPTION_DELETE_OLD, OPTION_PRINT)
 
 
 if __name__ == "__main__":
     OPTION_DELETE_OLD = False
+    OPTION_PRINT = False
     password = ""
     args = sys.argv[1:]
     if len(args) <= 1:
@@ -184,6 +194,10 @@ if __name__ == "__main__":
                 args.pop(i)
                 if i < len(args):
                     password = args.pop(i)
+            elif path in ["--print", "print",]:
+                OPTION_PRINT = True
+                args.pop(i)
+                i -= 1
             elif not os.path.exists(path):
                 print_error(f"{path} doesn't exist!")
                 break
@@ -201,17 +215,18 @@ if __name__ == "__main__":
                 else:
                     for path in args:
                         if os.path.isfile(path):
-                            encrypt_file(path, password, OPTION_DELETE_OLD)
+                            encrypt_file(path, password, OPTION_DELETE_OLD, OPTION_PRINT)
                         elif os.path.isdir(path):
-                            encrypt_dir(path, password, OPTION_DELETE_OLD)
+                            encrypt_dir(path, password, OPTION_DELETE_OLD, OPTION_PRINT)
 
             elif args[0] in ["-d", "--decrypt", "d", "decrypt"]:
                 if not password:
                     password = input_password("Input your password: ")
                 for path in args:
                     if os.path.isfile(path):
-                        decrypt_file(path, password, OPTION_DELETE_OLD)
+                        decrypt_file(path, password, OPTION_DELETE_OLD, OPTION_PRINT)
                     elif os.path.isdir(path):
-                        decrypt_dir(path, password, OPTION_DELETE_OLD)
+                        decrypt_dir(path, password, OPTION_DELETE_OLD, OPTION_PRINT)
+
             else:
                 print_help()
